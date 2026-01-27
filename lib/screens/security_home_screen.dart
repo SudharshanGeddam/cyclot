@@ -13,22 +13,24 @@ class SecurityHomeScreen extends StatelessWidget {
         title: Text('Security Home'),
         centerTitle: true,
         actions: [
-          IconButton(onPressed: () async {
-            await FirebaseAuth.instance.signOut();
+          IconButton(
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
               if (context.mounted) {
                 Navigator.of(
                   context,
                 ).pushNamedAndRemoveUntil('/login', (route) => false);
               }
-          }, icon: Icon(Icons.logout))
-        ],),
+            },
+            icon: Icon(Icons.logout),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: (){
+        onPressed: () {
           // Navigate to add bikes screen
           Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => SecurityAddBikesScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => SecurityAddBikesScreen()),
           );
         },
         child: Icon(Icons.add),
@@ -39,7 +41,8 @@ class SecurityHomeScreen extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Text('Welcome, Security!')),
+            child: Text('Welcome, Security!'),
+          ),
           const SizedBox(height: 16),
           _buildChipsWidget(),
         ],

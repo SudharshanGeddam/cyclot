@@ -1,41 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cyclot_v1/screens/employee_home_screen.dart';
 import 'package:cyclot_v1/screens/security_home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 // Placeholder home screens for each role
-class EmployeeHomeScreen extends StatelessWidget {
-  final String uid;
-  const EmployeeHomeScreen({required this.uid, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Employee Home')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Welcome, Employee!'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                if (context.mounted) {
-                  Navigator.of(
-                    context,
-                  ).pushNamedAndRemoveUntil('/login', (route) => false);
-                }
-              },
-              child: const Text('Logout'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class AdminHomeScreen extends StatelessWidget {
   final String uid;
   const AdminHomeScreen({required this.uid, super.key});
