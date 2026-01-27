@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 // Placeholder home screens for each role
@@ -17,8 +18,13 @@ class EmployeeHomeScreen extends StatelessWidget {
             const Text('Welcome, Employee!'),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                // TODO: Implement logout
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                if (context.mounted) {
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/login', (route) => false);
+                }
               },
               child: const Text('Logout'),
             ),
@@ -44,8 +50,13 @@ class SecurityHomeScreen extends StatelessWidget {
             const Text('Welcome, Security!'),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                // TODO: Implement logout
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                if (context.mounted) {
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/login', (route) => false);
+                }
               },
               child: const Text('Logout'),
             ),
@@ -71,8 +82,13 @@ class AdminHomeScreen extends StatelessWidget {
             const Text('Welcome, Admin!'),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                // TODO: Implement logout
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                if (context.mounted) {
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/login', (route) => false);
+                }
               },
               child: const Text('Logout'),
             ),
