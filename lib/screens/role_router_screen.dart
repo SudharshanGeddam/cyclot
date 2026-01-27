@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cyclot_v1/screens/security_add_bikes_screen.dart';
+import 'package:cyclot_v1/screens/security_home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -31,48 +31,6 @@ class EmployeeHomeScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class SecurityHomeScreen extends StatelessWidget {
-  final String uid;
-  const SecurityHomeScreen({required this.uid, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Security Home'),
-        centerTitle: true,
-        actions: [
-          IconButton(onPressed: () async {
-            await FirebaseAuth.instance.signOut();
-              if (context.mounted) {
-                Navigator.of(
-                  context,
-                ).pushNamedAndRemoveUntil('/login', (route) => false);
-              }
-          }, icon: Icon(Icons.logout))
-        ],),
-      floatingActionButton: FloatingActionButton(
-        onPressed: (){
-          // Navigate to add bikes screen
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => SecurityAddBikesScreen(),
-            ),
-          );
-        },
-        child: Icon(Icons.add),
-      ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Text('Welcome, Security!'),
-          const SizedBox(height: 16),
-        ],
       ),
     );
   }
