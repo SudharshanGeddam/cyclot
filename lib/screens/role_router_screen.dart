@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cyclot_v1/screens/admin_dashboard_screen.dart';
 import 'package:cyclot_v1/screens/employee_home_screen.dart';
 import 'package:cyclot_v1/screens/security_home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -29,6 +30,17 @@ class AdminHomeScreen extends StatelessWidget {
                 }
               },
               child: const Text('Logout'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AdminDashboardScreen(),
+                  ),
+                );
+              },
+              child: const Text('Admin Dashboard'),
             ),
           ],
         ),
