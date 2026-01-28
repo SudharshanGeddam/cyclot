@@ -41,20 +41,17 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
   }
 
   /// Return the bike
+  /// [bikeId] is the bike identifier field stored in the allocation
   Future<void> _returnBike(String allocationId, String bikeId) async {
     setState(() => _isReturning = true);
 
     try {
       // Update allocation status to returned
+      // Note: Only security can update the bike's isAllocated status per Firestore rules
       await _firestore.collection('allocations').doc(allocationId).update({
-        'status': false,
+        'status': 'returned',
         'returned': true,
         'returnedAt': DateTime.now(),
-      });
-
-      // Update bike to no longer be allocated
-      await _firestore.collection('bikes').doc(bikeId).update({
-        'isAllocated': false,
       });
 
       if (mounted) {

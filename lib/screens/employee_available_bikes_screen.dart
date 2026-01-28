@@ -16,30 +16,52 @@ class _EmployeeAvailableBikesScreenState
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Map<String, bool> _requestingBikes = {};
   late String _currentUserUid;
+  late String currentUserName;
 
   @override
   void initState() {
     super.initState();
     _currentUserUid = _auth.currentUser?.uid ?? '';
+    getUserName();
+  }
+
+  /// Fetch the current user's name
+  Future<void> getUserName() async {
+    try {
+      final userDoc = await _firestore
+          .collection('employees')
+          .doc(_currentUserUid)
+          .get();
+      setState(() {
+        currentUserName = userDoc['name'] ?? 'Unknown';
+      });
+    } catch (e) {
+      setState(() {
+        currentUserName = 'Unknown';
+      });
+    }
   }
 
   /// Request a bike for the current user
-  Future<void> _requestBike(String bikeId) async {
-    setState(() => _requestingBikes[bikeId] = true);
+  /// [docId] is the Firestore document ID, [bikeId] is the bike identifier field
+  Future<void> _requestBike(String docId, String bikeId) async {
+    setState(() => _requestingBikes[docId] = true);
 
     try {
       // Create allocation document directly
       // The Firestore rules and database constraints will prevent duplicates
       await _firestore.collection('allocations').add({
         'bikeId': bikeId,
+        'bikeDocId': docId, // Store the actual Firestore document ID
         'employeeId': _currentUserUid,
         'status': 'active',
         'returned': false,
         'requestedAt': DateTime.now(),
+        'employeeName': currentUserName,
       });
 
-      // Update bike as allocated
-      await _firestore.collection('bikes').doc(bikeId).update({
+      // Update bike as allocated using the actual Firestore document ID
+      await _firestore.collection('bikes').doc(docId).update({
         'isAllocated': true,
       });
 
@@ -68,7 +90,7 @@ class _EmployeeAvailableBikesScreenState
         ).showSnackBar(SnackBar(content: Text('Unexpected error: $e')));
       }
     } finally {
-      setState(() => _requestingBikes[bikeId] = false);
+      setState(() => _requestingBikes[docId] = false);
     }
   }
 
@@ -104,8 +126,10 @@ class _EmployeeAvailableBikesScreenState
             itemCount: bikes.length,
             itemBuilder: (context, index) {
               final bike = bikes[index];
-              final bikeId = bike['bikeId'] as String;
-              final isRequesting = _requestingBikes[bikeId] ?? false;
+              final docId = bike.id; // Firestore document ID
+              final bikeId =
+                  bike['bikeId'] as String; // Field value for display
+              final isRequesting = _requestingBikes[docId] ?? false;
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
@@ -149,7 +173,7 @@ class _EmployeeAvailableBikesScreenState
                         child: FilledButton(
                           onPressed: isRequesting
                               ? null
-                              : () => _requestBike(bikeId),
+                              : () => _requestBike(docId, bikeId),
                           child: isRequesting
                               ? const SizedBox(
                                   height: 20,
