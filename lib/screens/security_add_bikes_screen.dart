@@ -76,7 +76,7 @@ class _SecurityAddBikesScreenState extends State<SecurityAddBikesScreen> {
     final startingId = currentCount! + 1;
 
     final batch = FirebaseFirestore.instance.batch();
-
+    final bikeColors = ['Red', 'Blue', 'Green', 'Yellow'];
     for (int i = 0; i < numberOfBikes; i++) {
       final bikeId = 'BIKE_${(startingId + i).toString().padLeft(3, '0')}';
 
@@ -84,6 +84,7 @@ class _SecurityAddBikesScreenState extends State<SecurityAddBikesScreen> {
 
       final bikeData = {
         'bikeId': bikeId,
+        'color': bikeColors[i % bikeColors.length],
         'isAllocated': false,
         'isDamaged': false,
         'createdAt': FieldValue.serverTimestamp(),

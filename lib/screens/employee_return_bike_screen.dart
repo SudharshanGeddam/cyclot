@@ -35,11 +35,7 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
 
       return query.docs.isNotEmpty ? query.docs.first : null;
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching allocation: $e')),
-        );
-      }
+      // Silently return null on error
       return null;
     }
   }
@@ -51,8 +47,9 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
     try {
       // Update allocation status to returned
       await _firestore.collection('allocations').doc(allocationId).update({
-        'status': 'returned',
-        'returnedAt': FieldValue.serverTimestamp(),
+        'status': false,
+        'returned': true,
+        'returnedAt': DateTime.now(),
       });
 
       // Update bike to no longer be allocated

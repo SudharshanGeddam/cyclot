@@ -23,57 +23,19 @@ class _EmployeeAvailableBikesScreenState
     _currentUserUid = _auth.currentUser?.uid ?? '';
   }
 
-  /// Check if the current user has an active allocation
-  Future<bool> _hasActiveAllocation() async {
-    try {
-      final query = await _firestore
-          .collection('allocations')
-          .where('employeeId', isEqualTo: _currentUserUid)
-          .where('status', isEqualTo: 'active')
-          .limit(1)
-          .get();
-
-      return query.docs.isNotEmpty;
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error checking allocation: $e')),
-        );
-      }
-      return false;
-    }
-  }
-
   /// Request a bike for the current user
   Future<void> _requestBike(String bikeId) async {
     setState(() => _requestingBikes[bikeId] = true);
 
     try {
-      // Check if an active allocation already exists
-      final hasActive = await _hasActiveAllocation();
-
-      if (hasActive) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'You already have an active bike allocation. '
-                'Please return it before requesting another.',
-              ),
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-        setState(() => _requestingBikes[bikeId] = false);
-        return;
-      }
-
-      // Create allocation document
+      // Create allocation document directly
+      // The Firestore rules and database constraints will prevent duplicates
       await _firestore.collection('allocations').add({
         'bikeId': bikeId,
         'employeeId': _currentUserUid,
         'status': 'active',
-        'requestedAt': FieldValue.serverTimestamp(),
+        'returned': false,
+        'requestedAt': DateTime.now(),
       });
 
       // Update bike as allocated
@@ -142,7 +104,7 @@ class _EmployeeAvailableBikesScreenState
             itemCount: bikes.length,
             itemBuilder: (context, index) {
               final bike = bikes[index];
-              final bikeId = bike.id;
+              final bikeId = bike['bikeId'] as String;
               final isRequesting = _requestingBikes[bikeId] ?? false;
 
               return Card(
@@ -166,6 +128,16 @@ class _EmployeeAvailableBikesScreenState
                                   ).textTheme.titleMedium,
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Color: ${bike['color'] ?? 'Unknown'}',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Status: ${bike['isDamaged'] ? 'Damaged' : 'Available'}',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
                               ],
                             ),
                           ),
@@ -174,7 +146,7 @@ class _EmployeeAvailableBikesScreenState
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton(
+                        child: FilledButton(
                           onPressed: isRequesting
                               ? null
                               : () => _requestBike(bikeId),
