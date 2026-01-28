@@ -1,4 +1,5 @@
 import 'package:cyclot_v1/screens/security_add_bikes_screen.dart';
+import 'package:cyclot_v1/screens/security_returned_bikes_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -45,6 +46,36 @@ class SecurityHomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _buildChipsWidget(),
+          const SizedBox(height: 24),
+          // Quick action buttons
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Quick Actions',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const SecurityReturnedBikesScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.assignment_return),
+                  label: const Text('Review Returned Bikes'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -48,16 +48,20 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
     try {
       // Update allocation status to returned
       // Note: Only security can update the bike's isAllocated status per Firestore rules
+      // Set conditionReviewed to false so security can review the bike condition
       await _firestore.collection('allocations').doc(allocationId).update({
         'status': 'returned',
         'returned': true,
         'returnedAt': DateTime.now(),
+        'conditionReviewed': false,
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Bike returned successfully!'),
+            content: Text(
+              'Bike returned successfully! Pending security review.',
+            ),
             duration: Duration(seconds: 2),
           ),
         );
