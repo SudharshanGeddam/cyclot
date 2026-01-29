@@ -5,11 +5,11 @@ class AppTheme {
     primaryColor: Colors.purpleAccent,
     scaffoldBackgroundColor: Colors.white38,
     appBarTheme: AppBarTheme(
-      backgroundColor: Colors.purple,
+      backgroundColor: Colors.purpleAccent,
       titleTextStyle: TextStyle(
-        color: Colors.black,
+        color: Colors.white,
         fontSize: 20,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w500,
       ),
       iconTheme: IconThemeData(color: Colors.purpleAccent),
     ),
@@ -31,7 +31,15 @@ class AppTheme {
       padding: EdgeInsets.all(8),
     ),
     dividerColor: Colors.purple,
-    cardColor: Colors.white,
+    cardTheme: CardThemeData(
+      color: Colors.white,
+      elevation: 4,
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        side: BorderSide(color: Colors.purpleAccent),
+      ),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,

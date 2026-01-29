@@ -1,3 +1,4 @@
+import 'package:cyclot_v1/core/theme/app_theme.dart';
 import 'package:cyclot_v1/firebase_options.dart';
 import 'package:cyclot_v1/screens/login_screen.dart';
 import 'package:cyclot_v1/screens/register_screen.dart';
@@ -19,15 +20,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Cyclot',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
       home: const AuthCheckScreen(),
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
-        
       },
     );
   }
