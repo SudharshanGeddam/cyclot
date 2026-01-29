@@ -28,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Authenticates user with Firebase Auth and fetches role from Firestore.
   /// Returns uid on success, throws exception on failure.
   Future<String> _loginUser() async {
-    // 1. Authenticate using Firebase Auth (email/password)
+    // Authenticate using Firebase Auth (email/password)
     final userCredential = await FirebaseAuth.instance
         .signInWithEmailAndPassword(
           email: _emailController.text.trim(),
@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final uid = userCredential.user!.uid;
 
-    // 2. Fetch users/{uid} from Firestore to validate user data and get role
+    // Fetch users/{uid} from Firestore to validate user data and get role
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -52,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
       throw Exception('Role field missing in user profile');
     }
 
-    // 3. Role is validated; routing happens in RoleRouterScreen
+    // Role is validated; routing happens in RoleRouterScreen
     return uid;
   }
 
@@ -108,127 +108,143 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login'), elevation: 0),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 64),
-                // Title
-                Text(
-                  'Welcome Back',
-                  style: Theme.of(context).textTheme.headlineLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Login to your account',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 48),
-                // Error message
-                if (_errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.shade300),
+      appBar: AppBar(
+        title: const Text('Login'),
+        backgroundColor: const Color.fromARGB(255, 224, 160, 235),
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset('assets/images/auth_bg.png', fit: BoxFit.cover),
+          ),
+          Center(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 64),
+                      Text(
+                        'Welcome Back',
+                        style: Theme.of(context).textTheme.headlineLarge,
                       ),
-                      child: Text(
-                        _errorMessage!,
-                        style: TextStyle(color: Colors.red.shade700),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Login to your account',
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                    ),
+                      const SizedBox(height: 48),
+                      if (_errorMessage != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.shade300),
+                            ),
+                            child: Text(
+                              _errorMessage!,
+                              style: TextStyle(color: Colors.red.shade700),
+                            ),
+                          ),
+                        ),
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          hintText: 'john@example.com',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          prefixIcon: const Icon(Icons.email),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        enabled: !_isLoading,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your email';
+                          }
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                            return 'Please enter a valid email';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _passwordController,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          hintText: 'Enter your password',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          prefixIcon: const Icon(Icons.lock),
+                        ),
+                        obscureText: true,
+                        enabled: !_isLoading,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your password';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _isLoading ? null : () {},
+                          child: const Text('Forgot Password?'),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleLogin,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Login'),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text("Don't have an account? "),
+                          TextButton(
+                            onPressed: _isLoading
+                                ? null
+                                : () {
+                                    Navigator.of(
+                                      context,
+                                    ).pushNamed('/register');
+                                  },
+                            child: const Text('Register here'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-
-                // Email field
-                TextFormField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    hintText: 'john@example.com',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    prefixIcon: const Icon(Icons.email),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  enabled: !_isLoading,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 16),
-
-                // Password field
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    prefixIcon: const Icon(Icons.lock),
-                  ),
-                  obscureText: true,
-                  enabled: !_isLoading,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-
-                // Login button
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Login'),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Register link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text("Don't have an account? "),
-                    TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                              Navigator.of(context).pushNamed('/register');
-                            },
-                      child: const Text('Register here'),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
