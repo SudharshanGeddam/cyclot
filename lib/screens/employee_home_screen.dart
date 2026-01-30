@@ -1,6 +1,7 @@
 import 'package:cyclot_v1/core/extensions/context_extensions.dart';
 import 'package:cyclot_v1/models/user_model.dart';
 import 'package:cyclot_v1/screens/employee_available_bikes_screen.dart';
+import 'package:cyclot_v1/screens/employee_notifications_screen.dart';
 import 'package:cyclot_v1/screens/employee_return_bike_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -37,6 +38,30 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
         backgroundColor: context.appBarTheme.backgroundColor,
         centerTitle: true,
         actions: [
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('notifications')
+                .where('employeeId', isEqualTo: widget.uid)
+                .where('read', isEqualTo: false)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data?.docs.length ?? 0;
+              return IconButton(
+                icon: Badge(
+                  isLabelVisible: unreadCount > 0,
+                  label: Text('$unreadCount'),
+                  child: const Icon(Icons.notifications, color: Colors.white),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const EmployeeNotificationsScreen(),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
