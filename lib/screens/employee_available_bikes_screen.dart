@@ -29,7 +29,6 @@ class _EmployeeAvailableBikesScreenState
         .get()
         .then((doc) => AppUser.fromFirestore(doc));
 
-    // Stream to check if user already has an active allocation
     _activeAllocationStream = _firestore
         .collection('allocations')
         .where('employeeId', isEqualTo: _auth.uid)
@@ -37,12 +36,10 @@ class _EmployeeAvailableBikesScreenState
         .snapshots();
   }
 
-  /// Request a bike for the current user
   Future<void> _requestBike(String docId, String bikeId) async {
     setState(() => _requestingBikes[docId] = true);
 
     try {
-      // Double-check: Ensure user doesn't already have an active allocation
       final existingAllocation = await _firestore
           .collection('allocations')
           .where('employeeId', isEqualTo: _auth.uid)
@@ -63,11 +60,9 @@ class _EmployeeAvailableBikesScreenState
         return;
       }
 
-      // Create allocation document directly
-      // The Firestore rules and database constraints will prevent duplicates
       await _firestore.collection('allocations').add({
         'bikeId': bikeId,
-        'bikeDocId': docId, // Store the actual Firestore document ID
+        'bikeDocId': docId,
         'employeeId': _auth.uid,
         'status': 'active',
         'returned': false,
@@ -75,7 +70,6 @@ class _EmployeeAvailableBikesScreenState
         'employeeName': (await user).name,
       });
 
-      // Update bike as allocated using the actual Firestore document ID
       await _firestore.collection('bikes').doc(docId).update({
         'isAllocated': true,
       });

@@ -14,7 +14,6 @@ class _SecurityReturnedBikesScreenState
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Map<String, bool> _processingAllocations = {};
 
-  /// Process the returned bike - mark as damaged or undamaged
   Future<void> _reviewBike({
     required String allocationId,
     required String bikeId,
@@ -24,7 +23,6 @@ class _SecurityReturnedBikesScreenState
     setState(() => _processingAllocations[allocationId] = true);
 
     try {
-      // First, find the bike document by bikeId field
       final bikeQuery = await _firestore
           .collection('bikes')
           .where('bikeId', isEqualTo: bikeId)
@@ -38,16 +36,13 @@ class _SecurityReturnedBikesScreenState
       final bikeDocId = bikeQuery.docs.first.id;
       final condition = isDamaged ? 'damaged' : 'undamaged';
 
-      // Use a batch to ensure bike and allocation updates happen automatically
       final batch = _firestore.batch();
 
-      // 1. Update the bike document
       batch.update(_firestore.collection('bikes').doc(bikeDocId), {
         'isDamaged': isDamaged,
         'isAllocated': false,
       });
 
-      // 2. Update the allocation document
       batch.update(_firestore.collection('allocations').doc(allocationId), {
         'conditionReviewed': true,
         'condition': condition,
@@ -56,8 +51,6 @@ class _SecurityReturnedBikesScreenState
 
       await batch.commit();
 
-      // 3. Create notification for the employee (separate from batch)
-      // This is done after the main operations succeed
       try {
         await _firestore.collection('notifications').add({
           'employeeId': employeeId,
@@ -69,8 +62,6 @@ class _SecurityReturnedBikesScreenState
           'read': false,
         });
       } catch (e) {
-        // Notification failed but main operation succeeded
-        // Log or handle silently - don't fail the entire operation
         debugPrint('Failed to create notification: $e');
       }
 
@@ -111,7 +102,6 @@ class _SecurityReturnedBikesScreenState
     }
   }
 
-  /// Show confirmation dialog before marking bike condition
   Future<void> _showConfirmationDialog({
     required String allocationId,
     required String bikeId,

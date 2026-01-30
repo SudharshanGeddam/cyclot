@@ -30,9 +30,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// AuthCheckScreen: Checks if user is logged in and routes accordingly.
-/// - If logged in: Routes to RoleRouterScreen with user's UID
-/// - If not logged in: Routes to LoginScreen
 class AuthCheckScreen extends StatelessWidget {
   const AuthCheckScreen({super.key});
 
@@ -41,20 +38,17 @@ class AuthCheckScreen extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // While checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // User is logged in
         if (snapshot.hasData && snapshot.data != null) {
           final uid = snapshot.data!.uid;
           return RoleRouterScreen(uid: uid);
         }
 
-        // User is not logged in
         return const LoginScreen();
       },
     );

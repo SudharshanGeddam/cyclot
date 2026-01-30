@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
-/// Data model for dashboard statistics
 class DashboardStats {
   final int totalBikes;
   final int allocatedBikes;
@@ -46,9 +45,7 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Fetch all dashboard statistics from Firestore
   Future<DashboardStats> _fetchDashboardStats() async {
-    // Fetch bike statistics
     final bikesSnapshot = await _firestore.collection('bikes').get();
     final bikes = bikesSnapshot.docs;
 
@@ -64,7 +61,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }).length;
     final undamagedBikes = totalBikes - damagedBikes;
 
-    // Fetch allocation statistics
     final allocationsSnapshot = await _firestore
         .collection('allocations')
         .get();
@@ -113,7 +109,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       body: FutureBuilder<DashboardStats>(
         future: _fetchDashboardStats(),
         builder: (context, snapshot) {
-          // Loading state
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: Column(
@@ -127,7 +122,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             );
           }
 
-          // Error state
           if (snapshot.hasError) {
             return Center(
               child: Column(
@@ -148,7 +142,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
           final stats = snapshot.data ?? DashboardStats.empty();
 
-          // Empty state
           if (stats.totalBikes == 0) {
             return const Center(
               child: Column(
@@ -178,11 +171,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Summary cards
                   _buildSummaryCards(stats),
                   const SizedBox(height: 24),
 
-                  // Allocation Status Chart
                   _buildChartCard(
                     title: 'Bike Allocation Status',
                     subtitle: 'Allocated vs Available',
@@ -190,7 +181,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Damage Status Chart
                   _buildChartCard(
                     title: 'Bike Condition Status',
                     subtitle: 'Damaged vs Undamaged',

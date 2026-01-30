@@ -4,8 +4,6 @@ import 'package:cyclot_v1/screens/employee_home_screen.dart';
 import 'package:cyclot_v1/screens/security_home_screen.dart';
 import 'package:flutter/material.dart';
 
-/// RoleRouterScreen: Fetches user role from Firestore and routes accordingly.
-/// This widget ensures role-based navigation happens after auth and Firestore validation.
 class RoleRouterScreen extends StatefulWidget {
   final String uid;
 
@@ -24,8 +22,6 @@ class _RoleRouterScreenState extends State<RoleRouterScreen> {
     _routeFuture = _fetchRoleAndRoute();
   }
 
-  /// Fetches role from Firestore users/{uid} document
-  /// Throws FirebaseException if document doesn't exist (permission error, no user data, etc.)
   Future<Widget> _fetchRoleAndRoute() async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -42,7 +38,6 @@ class _RoleRouterScreenState extends State<RoleRouterScreen> {
         throw Exception('Role field missing in user document');
       }
 
-      // Route based on role
       return switch (role) {
         'employee' => EmployeeHomeScreen(uid: widget.uid),
         'security' => SecurityHomeScreen(uid: widget.uid),
@@ -83,7 +78,6 @@ class _RoleRouterScreenState extends State<RoleRouterScreen> {
   }
 }
 
-/// Fallback screen for unknown roles
 class _UnknownRoleScreen extends StatelessWidget {
   final String uid;
   final String role;
@@ -99,7 +93,6 @@ class _UnknownRoleScreen extends StatelessWidget {
   }
 }
 
-/// Error screen for Firestore access issues
 class _ErrorScreen extends StatelessWidget {
   final String error;
   final String uid;
@@ -118,7 +111,6 @@ class _ErrorScreen extends StatelessWidget {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                // Retry by popping and returning to login
                 Navigator.of(context).popUntil((route) => route.isFirst);
               },
               child: const Text('Return to Login'),

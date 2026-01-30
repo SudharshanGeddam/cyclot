@@ -14,7 +14,7 @@ class SecurityHomeScreen extends StatefulWidget {
 }
 
 class _SecurityHomeScreenState extends State<SecurityHomeScreen> {
-  String _selectedChip = 'available'; // 'available' or 'allocated'
+  String _selectedChip = 'available';
   int _availableCount = 0;
   int _allocatedCount = 0;
   List<DocumentSnapshot> _availableBikes = [];
@@ -144,7 +144,6 @@ class _SecurityHomeScreenState extends State<SecurityHomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Navigate to add bikes screen
           Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => SecurityAddBikesScreen()),
           );
@@ -182,7 +181,6 @@ class _SecurityHomeScreenState extends State<SecurityHomeScreen> {
               child: _buildContentList(),
             ),
           ),
-          // Quick action buttons - fixed at bottom
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(

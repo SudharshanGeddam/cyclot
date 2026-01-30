@@ -32,10 +32,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  /// Registers a new user with Firebase Auth and creates Firestore document.
-  /// Returns uid on success, throws exception on failure.
   Future<String> _registerUser() async {
-    // Create user with Firebase Auth (email/password)
     final userCredential = await FirebaseAuth.instance
         .createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
@@ -44,8 +41,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final uid = userCredential.user!.uid;
 
-    // Create Firestore document in users/{uid} with user metadata
-    // FieldValue.serverTimestamp() ensures server-side timestamp accuracy
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'name': _nameController.text.trim(),
       'email': _emailController.text.trim(),
@@ -70,7 +65,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final uid = await _registerUser();
 
       if (mounted) {
-        // Navigate to role-based router after successful registration
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => RoleRouterScreen(uid: uid)),
         );

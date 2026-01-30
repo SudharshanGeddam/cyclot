@@ -25,10 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Authenticates user with Firebase Auth and fetches role from Firestore.
-  /// Returns uid on success, throws exception on failure.
   Future<String> _loginUser() async {
-    // Authenticate using Firebase Auth (email/password)
     final userCredential = await FirebaseAuth.instance
         .signInWithEmailAndPassword(
           email: _emailController.text.trim(),
@@ -37,7 +34,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final uid = userCredential.user!.uid;
 
-    // Fetch users/{uid} from Firestore to validate user data and get role
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -52,7 +48,6 @@ class _LoginScreenState extends State<LoginScreen> {
       throw Exception('Role field missing in user profile');
     }
 
-    // Role is validated; routing happens in RoleRouterScreen
     return uid;
   }
 
@@ -70,7 +65,6 @@ class _LoginScreenState extends State<LoginScreen> {
       final uid = await _loginUser();
 
       if (mounted) {
-        // Navigate to role-based router after successful auth
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => RoleRouterScreen(uid: uid)),
         );
@@ -93,7 +87,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Converts Firebase Auth error codes to user-friendly messages
   String _getAuthErrorMessage(String code) {
     return switch (code) {
       'user-not-found' => 'No account found with this email',

@@ -23,7 +23,6 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
     _currentUserUid = _auth.currentUser?.uid ?? '';
   }
 
-  /// Fetch the current active allocation for the employee
   Future<DocumentSnapshot?> _getActiveAllocation() async {
     try {
       final query = await _firestore
@@ -35,20 +34,14 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
 
       return query.docs.isNotEmpty ? query.docs.first : null;
     } catch (e) {
-      // Silently return null on error
       return null;
     }
   }
 
-  /// Return the bike
-  /// [bikeId] is the bike identifier field stored in the allocation
   Future<void> _returnBike(String allocationId, String bikeId) async {
     setState(() => _isReturning = true);
 
     try {
-      // Update allocation status to returned
-      // Note: Only security can update the bike's isAllocated status per Firestore rules
-      // Set conditionReviewed to false so security can review the bike condition
       await _firestore.collection('allocations').doc(allocationId).update({
         'status': 'returned',
         'returned': true,
@@ -66,7 +59,6 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
           ),
         );
 
-        // Optional: Navigate back after successful return
         Future.delayed(const Duration(seconds: 1), () {
           if (mounted) Navigator.of(context).pop();
         });
