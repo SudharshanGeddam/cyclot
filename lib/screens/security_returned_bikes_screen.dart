@@ -156,7 +156,14 @@ class _SecurityReturnedBikesScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Returned Bikes Review'), elevation: 0),
+      appBar: AppBar(
+        title: const Text('Returned Bikes Review'),
+        elevation: 0,
+        leading: BackButton(
+          onPressed: () => Navigator.of(context).pop(),
+          color: Colors.white,
+        ),
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore
             .collection('allocations')

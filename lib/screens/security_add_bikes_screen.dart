@@ -99,7 +99,13 @@ class _SecurityAddBikesScreenState extends State<SecurityAddBikesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Bikes in Bulk')),
+      appBar: AppBar(
+        title: const Text('Add Bikes in Bulk'),
+        leading: BackButton(
+          onPressed: () => Navigator.of(context).pop(),
+          color: Colors.white,
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: SingleChildScrollView(
