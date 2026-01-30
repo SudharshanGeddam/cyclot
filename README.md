@@ -89,7 +89,6 @@ lib/
 - [ ] Admin user management (view/edit/delete users)
 - [ ] Allocation history for employees
 - [ ] Export reports functionality for admin
-- [ ] Dark mode support
 
 ### Technical Improvements
 - [ ] Offline support with local caching
