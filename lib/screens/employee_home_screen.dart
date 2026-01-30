@@ -63,23 +63,22 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                   Row(
                     children: [
                       Text('Welcome, '),
-                      Text(
-                        '$userName' '!',
-                        style: context.textTheme.titleLarge
-                      ),
-                      ]
-                      ),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: Lottie.asset(
-                      'assets/lotties/employee_home_animation.json',
-                      width: double.infinity,
-                      height: 300,
-                      fit: BoxFit.fitWidth,
-                    ),
+                      Text('$userName!', style: context.textTheme.titleLarge),
+                    ],
                   ),
                   const SizedBox(height: 24),
-                  TextButton(
+                  Lottie.asset(
+                    'assets/lotties/employee_home_animation.json',
+                    width: double.infinity,
+                    height: 500,
+                    fit: BoxFit.fitWidth,
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: Size(double.infinity, 48),
+                      side: BorderSide(color: Colors.purpleAccent),
+                    ),
                     child: Text('View Available Bikes'),
                     onPressed: () {
                       Navigator.of(context).push(
@@ -91,12 +90,17 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  TextButton(
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: Size(double.infinity, 48),
+                      side: BorderSide(color: Colors.purpleAccent),
+                    ),
                     child: Text('Return Bike'),
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => const EmployeeReturnBikeScreen(),
+                          builder: (context) =>
+                              const EmployeeReturnBikeScreen(),
                         ),
                       );
                     },

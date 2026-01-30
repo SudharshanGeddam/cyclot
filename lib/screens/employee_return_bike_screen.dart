@@ -101,7 +101,14 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Return Bike'), elevation: 0),
+      appBar: AppBar(
+        title: const Text('Return Bike'),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
       body: FutureBuilder<DocumentSnapshot?>(
         future: _getActiveAllocation(),
         builder: (context, snapshot) {
@@ -170,6 +177,7 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
                     label: const Text('Return Bike'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: BorderSide(color: Colors.purpleAccent),
                     ),
                   ),
                 ),
