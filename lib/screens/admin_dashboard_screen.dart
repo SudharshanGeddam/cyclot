@@ -37,7 +37,7 @@ class DashboardStats {
 }
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key});
+  const AdminDashboardScreen({super.key, required String uid});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -106,7 +106,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ).pushNamedAndRemoveUntil('/login', (route) => false);
               }
             },
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.white),
           ),
         ],
       ),

@@ -2,52 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cyclot_v1/screens/admin_dashboard_screen.dart';
 import 'package:cyclot_v1/screens/employee_home_screen.dart';
 import 'package:cyclot_v1/screens/security_home_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
-// Placeholder home screens for each role
-class AdminHomeScreen extends StatelessWidget {
-  final String uid;
-  const AdminHomeScreen({required this.uid, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Admin Home')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Welcome, Admin!'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                if (context.mounted) {
-                  Navigator.of(
-                    context,
-                  ).pushNamedAndRemoveUntil('/login', (route) => false);
-                }
-              },
-              child: const Text('Logout'),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const AdminDashboardScreen(),
-                  ),
-                );
-              },
-              child: const Text('Admin Dashboard'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// RoleRouterScreen: Fetches user role from Firestore and routes accordingly.
 /// This widget ensures role-based navigation happens after auth and Firestore validation.
@@ -91,7 +46,7 @@ class _RoleRouterScreenState extends State<RoleRouterScreen> {
       return switch (role) {
         'employee' => EmployeeHomeScreen(uid: widget.uid),
         'security' => SecurityHomeScreen(uid: widget.uid),
-        'admin' => AdminHomeScreen(uid: widget.uid),
+        'admin' => AdminDashboardScreen(uid: widget.uid),
         _ => _UnknownRoleScreen(uid: widget.uid, role: role),
       };
     } on FirebaseException catch (e) {

@@ -6,6 +6,7 @@ class AppTheme {
     scaffoldBackgroundColor: Colors.white,
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.purpleAccent,
+      centerTitle: true,
       titleTextStyle: TextStyle(
         color: Colors.white,
         fontSize: 20,
