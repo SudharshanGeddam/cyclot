@@ -1,5 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Project imports:
+import 'package:cyclot_v1/core/helpers/error_helper.dart';
+import 'package:cyclot_v1/models/allocation_model.dart';
+import 'package:cyclot_v1/repositories/allocation_repository.dart';
+import 'package:cyclot_v1/services/allocation_service.dart';
 
 class SecurityReturnedBikesScreen extends StatefulWidget {
   const SecurityReturnedBikesScreen({super.key});
@@ -11,7 +17,8 @@ class SecurityReturnedBikesScreen extends StatefulWidget {
 
 class _SecurityReturnedBikesScreenState
     extends State<SecurityReturnedBikesScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AllocationService _allocationService = AllocationService();
+  final AllocationRepository _allocationRepository = AllocationRepository();
   final Map<String, bool> _processingAllocations = {};
 
   Future<void> _reviewBike({
@@ -23,47 +30,12 @@ class _SecurityReturnedBikesScreenState
     setState(() => _processingAllocations[allocationId] = true);
 
     try {
-      final bikeQuery = await _firestore
-          .collection('bikes')
-          .where('bikeId', isEqualTo: bikeId)
-          .limit(1)
-          .get();
-
-      if (bikeQuery.docs.isEmpty) {
-        throw Exception('Bike not found in database');
-      }
-
-      final bikeDocId = bikeQuery.docs.first.id;
-      final condition = isDamaged ? 'damaged' : 'undamaged';
-
-      final batch = _firestore.batch();
-
-      batch.update(_firestore.collection('bikes').doc(bikeDocId), {
-        'isDamaged': isDamaged,
-        'isAllocated': false,
-      });
-
-      batch.update(_firestore.collection('allocations').doc(allocationId), {
-        'conditionReviewed': true,
-        'condition': condition,
-        'reviewedAt': DateTime.now(),
-      });
-
-      await batch.commit();
-
-      try {
-        await _firestore.collection('notifications').add({
-          'employeeId': employeeId,
-          'bikeId': bikeId,
-          'message': isDamaged
-              ? 'Your returned bike ($bikeId) was marked as damaged. Please contact administration.'
-              : 'Your returned bike ($bikeId) has been reviewed and accepted. Thank you!',
-          'createdAt': DateTime.now(),
-          'read': false,
-        });
-      } catch (e) {
-        debugPrint('Failed to create notification: $e');
-      }
+      await _allocationService.reviewReturnedBike(
+        allocationId: allocationId,
+        bikeId: bikeId,
+        employeeId: employeeId,
+        isDamaged: isDamaged,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -78,21 +50,11 @@ class _SecurityReturnedBikesScreenState
           ),
         );
       }
-    } on FirebaseException catch (e) {
-      if (mounted) {
-        String errorMessage = 'Error processing bike';
-        if (e.code == 'permission-denied') {
-          errorMessage = 'Permission denied. Contact administrator.';
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Unexpected error: $e'),
+            content: Text('Error reviewing bike: ${ErrorHelper.cleanError(e)}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -154,12 +116,8 @@ class _SecurityReturnedBikesScreenState
           color: Colors.white,
         ),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore
-            .collection('allocations')
-            .where('status', isEqualTo: 'returned')
-            .where('conditionReviewed', isEqualTo: false)
-            .snapshots(),
+      body: StreamBuilder<List<Allocation>>(
+        stream: _allocationRepository.getReturnedBikesStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -178,7 +136,7 @@ class _SecurityReturnedBikesScreenState
             );
           }
 
-          final allocations = snapshot.data?.docs ?? [];
+          final allocations = snapshot.data ?? [];
 
           if (allocations.isEmpty) {
             return const Center(
@@ -206,11 +164,9 @@ class _SecurityReturnedBikesScreenState
             itemBuilder: (context, index) {
               final allocation = allocations[index];
               final allocationId = allocation.id;
-              final bikeId = allocation['bikeId'] as String? ?? 'Unknown';
-              final employeeId =
-                  allocation['employeeId'] as String? ?? 'Unknown';
-              final employeeName =
-                  allocation['employeeName'] as String? ?? 'Unknown';
+              final bikeId = allocation.bikeId;
+              final employeeId = allocation.employeeId;
+              final userName = allocation.userName;
               final isProcessing =
                   _processingAllocations[allocationId] ?? false;
 
@@ -247,7 +203,7 @@ class _SecurityReturnedBikesScreenState
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Returned by: $employeeName',
+                                  'Returned by: $userName',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],

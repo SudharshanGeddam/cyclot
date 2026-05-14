@@ -1,7 +1,13 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
+
+// Project imports:
+import 'package:cyclot_v1/models/allocation_model.dart';
+import 'package:cyclot_v1/repositories/allocation_repository.dart';
+import 'package:cyclot_v1/services/allocation_service.dart';
+import 'package:cyclot_v1/services/auth_service.dart';
+import 'package:cyclot_v1/widgets/active_allocation_card.dart';
+import 'package:cyclot_v1/core/helpers/error_helper.dart';
 
 class EmployeeReturnBikeScreen extends StatefulWidget {
   const EmployeeReturnBikeScreen({super.key});
@@ -12,27 +18,23 @@ class EmployeeReturnBikeScreen extends StatefulWidget {
 }
 
 class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AuthService _authService = AuthService();
+  final AllocationService _allocationService = AllocationService();
+  final AllocationRepository _allocationRepository = AllocationRepository();
   bool _isReturning = false;
   late String _currentUserUid;
 
   @override
   void initState() {
     super.initState();
-    _currentUserUid = _auth.currentUser?.uid ?? '';
+    _currentUserUid = _authService.currentUserId ?? '';
   }
 
-  Future<DocumentSnapshot?> _getActiveAllocation() async {
+  Future<Allocation?> _getActiveAllocation() async {
     try {
-      final query = await _firestore
-          .collection('allocations')
-          .where('employeeId', isEqualTo: _currentUserUid)
-          .where('status', isEqualTo: 'active')
-          .limit(1)
-          .get();
-
-      return query.docs.isNotEmpty ? query.docs.first : null;
+      return await _allocationRepository.getActiveAllocationForEmployee(
+        _currentUserUid,
+      );
     } catch (e) {
       return null;
     }
@@ -42,12 +44,10 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
     setState(() => _isReturning = true);
 
     try {
-      await _firestore.collection('allocations').doc(allocationId).update({
-        'status': 'returned',
-        'returned': true,
-        'returnedAt': DateTime.now(),
-        'conditionReviewed': false,
-      });
+      await _allocationService.returnBike(
+        allocationId: allocationId,
+        bikeId: bikeId,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -63,31 +63,17 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
           if (mounted) Navigator.of(context).pop();
         });
       }
-    } on FirebaseException catch (e) {
-      if (mounted) {
-        String errorMessage = 'Error returning bike';
-        if (e.code == 'permission-denied') {
-          errorMessage = 'Permission denied. Contact administrator.';
-        }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
-      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Unexpected error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error returning bike: ${ErrorHelper.cleanError(e)}'),
+          ),
+        );
       }
     } finally {
       setState(() => _isReturning = false);
     }
-  }
-
-  String _formatTimestamp(Timestamp? timestamp) {
-    if (timestamp == null) return 'N/A';
-    final dateTime = timestamp.toDate();
-    return DateFormat('MMM dd, yyyy HH:mm').format(dateTime);
   }
 
   @override
@@ -101,7 +87,7 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: FutureBuilder<DocumentSnapshot?>(
+      body: FutureBuilder<Allocation?>(
         future: _getActiveAllocation(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -114,44 +100,21 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
 
           final allocation = snapshot.data;
 
-          if (allocation == null || !allocation.exists) {
+          if (allocation == null) {
             return const Center(
               child: Text('You do not have an active bike allocation.'),
             );
           }
 
           final allocationId = allocation.id;
-          final bikeId = allocation['bikeId'] as String? ?? '';
-          final requestedAt = allocation['requestedAt'] as Timestamp?;
+          final bikeId = allocation.bikeId;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Active Allocation',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildInfoRow('Bike ID', bikeId),
-                        const SizedBox(height: 12),
-                        _buildInfoRow(
-                          'Requested At',
-                          _formatTimestamp(requestedAt),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInfoRow('Status', 'Active'),
-                      ],
-                    ),
-                  ),
-                ),
+                ActiveAllocationCard(allocation: allocation),
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
@@ -186,21 +149,6 @@ class _EmployeeReturnBikeScreenState extends State<EmployeeReturnBikeScreen> {
           );
         },
       ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-        ),
-        Text(value, style: Theme.of(context).textTheme.bodyMedium),
-      ],
     );
   }
 }

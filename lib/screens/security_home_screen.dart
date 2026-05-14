@@ -1,329 +1,199 @@
+// Flutter imports:
+import 'package:flutter/material.dart';
+
+// Project imports:
+import 'package:cyclot_v1/core/helpers/error_helper.dart';
 import 'package:cyclot_v1/models/user_model.dart';
+import 'package:cyclot_v1/repositories/bike_repository.dart';
+import 'package:cyclot_v1/repositories/user_repository.dart';
 import 'package:cyclot_v1/screens/security_add_bikes_screen.dart';
 import 'package:cyclot_v1/screens/security_returned_bikes_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
+import 'package:cyclot_v1/services/auth_service.dart';
 
 class SecurityHomeScreen extends StatefulWidget {
   final String uid;
-  const SecurityHomeScreen({required this.uid, super.key});
+  final UserRepository? userRepository;
+  final BikeRepository? bikeRepository;
+
+  const SecurityHomeScreen({
+    required this.uid,
+    this.userRepository,
+    this.bikeRepository,
+    super.key,
+  });
 
   @override
   State<SecurityHomeScreen> createState() => _SecurityHomeScreenState();
 }
 
 class _SecurityHomeScreenState extends State<SecurityHomeScreen> {
-  String _selectedChip = 'available';
+  late final UserRepository _userRepository;
+  late final BikeRepository _bikeRepository;
   int _availableCount = 0;
   int _allocatedCount = 0;
-  List<DocumentSnapshot> _availableBikes = [];
-  List<Map<String, dynamic>> _allocations = [];
-  DocumentSnapshot? _lastAvailableDoc;
-  bool _hasMoreAvailable = true;
-  bool _isLoading = false;
-  late Future<AppUser> userFuture;
+  late Future<AppUser?> userFuture;
 
   @override
   void initState() {
     super.initState();
-    userFuture = FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.uid)
-        .get()
-        .then((doc) => AppUser.fromFirestore(doc));
+    _userRepository = widget.userRepository ?? UserRepository();
+    _bikeRepository = widget.bikeRepository ?? BikeRepository();
+    userFuture = _userRepository.getUser(widget.uid);
     _loadCounts();
-    _loadAvailableBikes();
   }
 
   Future<void> _loadCounts() async {
-    final bikesSnapshot = await FirebaseFirestore.instance
-        .collection('bikes')
-        .get();
-    int available = 0;
-    int allocated = 0;
-    for (var doc in bikesSnapshot.docs) {
-      final data = doc.data();
-      if (data['isAllocated'] == true) {
-        allocated++;
-      } else {
-        available++;
-      }
-    }
-    setState(() {
-      _availableCount = available;
-      _allocatedCount = allocated;
-    });
-  }
-
-  Future<void> _loadAvailableBikes({bool refresh = false}) async {
-    if (_isLoading) return;
-    setState(() => _isLoading = true);
-
-    Query query = FirebaseFirestore.instance
-        .collection('bikes')
-        .where('isAllocated', isEqualTo: false)
-        .limit(10);
-
-    if (!refresh && _lastAvailableDoc != null) {
-      query = query.startAfterDocument(_lastAvailableDoc!);
-    }
-
-    final snapshot = await query.get();
-    setState(() {
-      if (refresh) {
-        _availableBikes = snapshot.docs;
-      } else {
-        _availableBikes = snapshot.docs;
-      }
-      if (snapshot.docs.isNotEmpty) {
-        _lastAvailableDoc = snapshot.docs.last;
-      }
-      _hasMoreAvailable = snapshot.docs.length == 10;
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _loadAllocations() async {
-    if (_isLoading) return;
-    setState(() => _isLoading = true);
-
-    final allocationsSnapshot = await FirebaseFirestore.instance
-        .collection('allocations')
-        .get();
-
-    List<Map<String, dynamic>> allocations = [];
-    for (var doc in allocationsSnapshot.docs) {
-      final data = doc.data();
-      allocations.add({
-        'id': doc.id,
-        'bikeNumber': data['bikeNumber'] ?? 'Unknown',
-        'userName': data['userName'] ?? 'Unknown',
-        'userEmail': data['userEmail'] ?? '',
-        'allocatedAt': data['allocatedAt'],
+    try {
+      final bikeStats = await _bikeRepository.getBikesStats();
+      setState(() {
+        _availableCount = bikeStats['available'] ?? 0;
+        _allocatedCount = bikeStats['allocated'] ?? 0;
       });
-    }
-
-    setState(() {
-      _allocations = allocations;
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _onRefresh() async {
-    if (_selectedChip == 'available') {
-      _lastAvailableDoc = _availableBikes.isNotEmpty
-          ? _availableBikes.last
-          : null;
-      await _loadAvailableBikes();
-    } else {
-      await _loadAllocations();
-    }
-    await _loadCounts();
+    } catch (e) {}
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home'),
+        title: const Text('Home'),
         centerTitle: true,
         actions: [
           IconButton(
             onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              if (context.mounted) {
-                Navigator.of(
-                  context,
-                ).pushNamedAndRemoveUntil('/login', (route) => false);
+              final authService = AuthService();
+              try {
+                await authService.logout();
+                if (context.mounted) {
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/login', (route) => false);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Logout error: ${ErrorHelper.cleanError(e)}',
+                      ),
+                    ),
+                  );
+                }
               }
             },
-            icon: Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout, color: Colors.white),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => SecurityAddBikesScreen()),
+            MaterialPageRoute(
+              builder: (context) => const SecurityAddBikesScreen(),
+            ),
           );
         },
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: FutureBuilder<AppUser>(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FutureBuilder<AppUser?>(
               future: userFuture,
               builder: (context, snapshot) {
                 final userName = snapshot.data?.name ?? 'Security';
-                return Row(
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Welcome, '),
+                    const Text('Welcome,'),
                     Text(
                       '$userName!',
-                      style: Theme.of(context).textTheme.titleLarge,
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
                   ],
                 );
               },
             ),
-          ),
-          const SizedBox(height: 16),
-          _buildChipsWidget(),
-          const SizedBox(height: 16),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _onRefresh,
-              child: _buildContentList(),
+            const SizedBox(height: 32),
+            const Text(
+              'Bike Stats',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            const SizedBox(height: 16),
+            Row(
               children: [
-                Text(
-                  'Quick Actions',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const SecurityReturnedBikesScreen(),
+                Expanded(
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Available',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '$_availableCount',
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(color: Colors.green),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.assignment_return),
-                  label: const Text('Review Returned Bikes'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Allocated',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '$_allocatedCount',
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(color: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChipsWidget() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ChoiceChip(
-            label: Text('Available: $_availableCount'),
-            selected: _selectedChip == 'available',
-            selectedColor: Colors.green.shade200,
-            backgroundColor: Colors.green.shade50,
-            onSelected: (selected) {
-              if (selected) {
-                setState(() => _selectedChip = 'available');
-                _loadAvailableBikes(refresh: true);
-              }
-            },
-          ),
-          const SizedBox(width: 16),
-          ChoiceChip(
-            label: Text('Allocated: $_allocatedCount'),
-            selected: _selectedChip == 'allocated',
-            selectedColor: Colors.red.shade200,
-            backgroundColor: Colors.red.shade50,
-            onSelected: (selected) {
-              if (selected) {
-                setState(() => _selectedChip = 'allocated');
-                _loadAllocations();
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContentList() {
-    if (_isLoading &&
-        (_selectedChip == 'available'
-            ? _availableBikes.isEmpty
-            : _allocations.isEmpty)) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_selectedChip == 'available') {
-      if (_availableBikes.isEmpty) {
-        return ListView(
-          children: const [
-            SizedBox(height: 50),
-            Center(child: Text('No available bikes')),
-          ],
-        );
-      }
-      return ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _availableBikes.length + (_hasMoreAvailable ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == _availableBikes.length) {
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Center(
-                child: Text(
-                  'Pull to refresh for next 10 bikes',
-                  style: TextStyle(color: Colors.grey),
-                ),
+            const SizedBox(height: 32),
+            const Text(
+              'Quick Actions',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const SecurityReturnedBikesScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.assignment_return),
+              label: const Text('Review Returned Bikes'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
               ),
-            );
-          }
-          final bike = _availableBikes[index].data() as Map<String, dynamic>;
-          return Card(
-            child: ListTile(
-              leading: Icon(Icons.pedal_bike, color: Colors.green),
-              title: Text(bike['bikeNumber'] ?? 'Unknown'),
-              subtitle: Text('Status: Available'),
             ),
-          );
-        },
-      );
-    } else {
-      if (_allocations.isEmpty) {
-        return ListView(
-          children: const [
-            SizedBox(height: 50),
-            Center(child: Text('No allocated bikes')),
           ],
-        );
-      }
-      return ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _allocations.length,
-        itemBuilder: (context, index) {
-          final allocation = _allocations[index];
-          return Card(
-            child: ListTile(
-              leading: Icon(Icons.pedal_bike, color: Colors.red),
-              title: Text('Bike: ${allocation['bikeNumber']}'),
-              subtitle: Text('Allocated to: ${allocation['userName']}'),
-              trailing:
-                  allocation['userEmail'] != null &&
-                      allocation['userEmail'].isNotEmpty
-                  ? Text(
-                      allocation['userEmail'],
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    )
-                  : null,
-            ),
-          );
-        },
-      );
-    }
+        ),
+      ),
+    );
   }
 }

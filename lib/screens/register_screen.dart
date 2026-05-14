@@ -1,7 +1,14 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cyclot_v1/screens/role_router_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Project imports:
+import 'package:cyclot_v1/core/helpers/validation_helpers.dart';
+import 'package:cyclot_v1/core/helpers/error_helper.dart';
+import 'package:cyclot_v1/screens/role_router_screen.dart';
+import 'package:cyclot_v1/services/auth_service.dart';
+import 'package:cyclot_v1/widgets/auth_form_fields.dart';
+import 'package:cyclot_v1/widgets/error_banner.dart';
+import 'package:cyclot_v1/widgets/loading_button.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,12 +23,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _authService = AuthService();
 
-  String _selectedRole = 'employee';
   bool _isLoading = false;
   String? _errorMessage;
-
-  final List<String> _roles = ['employee', 'security', 'admin'];
 
   @override
   void dispose() {
@@ -30,25 +35,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
-  }
-
-  Future<String> _registerUser() async {
-    final userCredential = await FirebaseAuth.instance
-        .createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
-
-    final uid = userCredential.user!.uid;
-
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'name': _nameController.text.trim(),
-      'email': _emailController.text.trim(),
-      'role': _selectedRole,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    return uid;
   }
 
   void _handleRegister() async {
@@ -62,26 +48,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final uid = await _registerUser();
+      final uid = await _authService.register(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        name: _nameController.text.trim(),
+      );
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => RoleRouterScreen(uid: uid)),
         );
       }
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        _errorMessage = 'Auth Error: ${e.message}';
-        _isLoading = false;
-      });
-    } on FirebaseException catch (e) {
-      setState(() {
-        _errorMessage = 'Firestore Error: ${e.message}';
-        _isLoading = false;
-      });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Unexpected error: $e';
+        _errorMessage = ErrorHelper.cleanError(e);
         _isLoading = false;
       });
     }
@@ -121,31 +101,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 32),
                       if (_errorMessage != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade100,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.red.shade300),
-                            ),
-                            child: Text(
-                              _errorMessage!,
-                              style: TextStyle(color: Colors.red.shade700),
-                            ),
-                          ),
+                        ErrorBanner(
+                          message: _errorMessage ?? '',
+                          isError: true,
                         ),
-                      TextFormField(
+                      if (_errorMessage != null) const SizedBox(height: 16),
+                      NameField(
                         controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: 'Full Name',
-                          hintText: 'John Doe',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          prefixIcon: const Icon(Icons.person),
-                        ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your name';
@@ -157,39 +119,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      TextFormField(
+                      EmailField(
                         controller: _emailController,
-                        decoration: InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'john@example.com',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          prefixIcon: const Icon(Icons.email),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
-                          }
-                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                            return 'Please enter a valid email';
-                          }
-                          return null;
-                        },
+                        validator: (value) =>
+                            ValidationHelpers.validateEmail(value),
                       ),
                       const SizedBox(height: 16),
-                      TextFormField(
+                      PasswordField(
                         controller: _passwordController,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          hintText: 'Atleast 6 characters',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          prefixIcon: const Icon(Icons.lock),
-                        ),
-                        obscureText: true,
+                        label: 'Password',
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a password';
@@ -201,16 +139,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      TextFormField(
+                      PasswordField(
                         controller: _confirmPasswordController,
-                        decoration: InputDecoration(
-                          labelText: 'Confirm Password',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          prefixIcon: const Icon(Icons.lock),
-                        ),
-                        obscureText: true,
+                        label: 'Confirm Password',
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please confirm your password';
@@ -221,48 +152,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedRole,
-                        decoration: InputDecoration(
-                          labelText: 'Role',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          prefixIcon: const Icon(Icons.security),
-                        ),
-                        items: _roles.map((role) {
-                          return DropdownMenuItem(
-                            value: role,
-                            child: Text(
-                              role.replaceFirst(role[0], role[0].toUpperCase()),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedRole = value;
-                            });
-                          }
-                        },
-                      ),
                       const SizedBox(height: 32),
-                      SizedBox(
+                      LoadingButton(
+                        label: 'Register',
+                        onPressed: _handleRegister,
+                        isLoading: _isLoading,
                         width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _handleRegister,
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text('Register'),
-                        ),
                       ),
                       const SizedBox(height: 16),
                       Row(

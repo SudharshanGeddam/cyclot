@@ -1,11 +1,16 @@
+// Flutter imports:
+import 'package:flutter/material.dart';
+
+// Package imports:
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+// Project imports:
 import 'package:cyclot_v1/core/theme/app_theme.dart';
 import 'package:cyclot_v1/firebase_options.dart';
 import 'package:cyclot_v1/screens/login_screen.dart';
 import 'package:cyclot_v1/screens/register_screen.dart';
 import 'package:cyclot_v1/screens/role_router_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -1,11 +1,11 @@
 {
-    "name": "cyclot_v1",
-    "short_name": "cyclot_v1",
+    "name": "Cyclot - Bike Management System",
+    "short_name": "Cyclot",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Cyclot - Bike Management System for organizations to manage bike allocations, returns, and inventory tracking.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,13 +1,35 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
+
+// Project imports:
+import 'package:cyclot_v1/core/constants.dart';
+import 'package:cyclot_v1/core/helpers/error_helper.dart';
+import 'package:cyclot_v1/repositories/user_repository.dart';
+import 'package:cyclot_v1/repositories/bike_repository.dart';
+import 'package:cyclot_v1/repositories/allocation_repository.dart';
+import 'package:cyclot_v1/repositories/notification_repository.dart';
+import 'package:cyclot_v1/services/auth_service.dart';
 import 'package:cyclot_v1/screens/admin_dashboard_screen.dart';
 import 'package:cyclot_v1/screens/employee_home_screen.dart';
 import 'package:cyclot_v1/screens/security_home_screen.dart';
-import 'package:flutter/material.dart';
 
 class RoleRouterScreen extends StatefulWidget {
   final String uid;
+  final UserRepository? userRepository;
+  final AuthService? authService;
+  final BikeRepository? bikeRepository;
+  final AllocationRepository? allocationRepository;
+  final NotificationRepository? notificationRepository;
 
-  const RoleRouterScreen({required this.uid, super.key});
+  const RoleRouterScreen({
+    required this.uid,
+    this.userRepository,
+    this.authService,
+    this.bikeRepository,
+    this.allocationRepository,
+    this.notificationRepository,
+    super.key,
+  });
 
   @override
   State<RoleRouterScreen> createState() => _RoleRouterScreenState();
@@ -15,42 +37,48 @@ class RoleRouterScreen extends StatefulWidget {
 
 class _RoleRouterScreenState extends State<RoleRouterScreen> {
   late Future<Widget> _routeFuture;
+  late final UserRepository _userRepository;
 
   @override
   void initState() {
     super.initState();
+    _userRepository = widget.userRepository ?? UserRepository();
     _routeFuture = _fetchRoleAndRoute();
   }
 
   Future<Widget> _fetchRoleAndRoute() async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.uid)
-          .get();
+      final role = await _userRepository.getUserRole(widget.uid);
 
-      if (!doc.exists) {
-        throw Exception('User document not found in Firestore');
-      }
-
-      final role = doc.data()?['role'] as String?;
       if (role == null) {
         throw Exception('Role field missing in user document');
       }
 
       return switch (role) {
-        'employee' => EmployeeHomeScreen(uid: widget.uid),
-        'security' => SecurityHomeScreen(uid: widget.uid),
-        'admin' => AdminDashboardScreen(uid: widget.uid),
+        UserRoles.employee => EmployeeHomeScreen(
+            uid: widget.uid,
+            userRepository: widget.userRepository,
+            authService: widget.authService,
+            notificationRepository: widget.notificationRepository,
+          ),
+        UserRoles.security => SecurityHomeScreen(
+            uid: widget.uid,
+            userRepository: widget.userRepository,
+            bikeRepository: widget.bikeRepository,
+          ),
+        UserRoles.admin => AdminDashboardScreen(
+            uid: widget.uid,
+            authService: widget.authService,
+            bikeRepository: widget.bikeRepository,
+            allocationRepository: widget.allocationRepository,
+          ),
         _ => _UnknownRoleScreen(uid: widget.uid, role: role),
       };
-    } on FirebaseException catch (e) {
+    } catch (e) {
       return _ErrorScreen(
-        error: 'Firebase Error: ${e.message}',
+        error: 'Error: ${ErrorHelper.cleanError(e)}',
         uid: widget.uid,
       );
-    } catch (e) {
-      return _ErrorScreen(error: 'Error: $e', uid: widget.uid);
     }
   }
 

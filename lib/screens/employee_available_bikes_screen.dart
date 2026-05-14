@@ -1,8 +1,16 @@
-import 'package:cyclot_v1/core/extensions/context_extensions.dart';
-import 'package:cyclot_v1/models/user_model.dart';
+// Flutter imports:
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+// Project imports:
+import 'package:cyclot_v1/core/extensions/context_extensions.dart';
+import 'package:cyclot_v1/core/helpers/error_helper.dart';
+import 'package:cyclot_v1/models/bike_model.dart';
+import 'package:cyclot_v1/models/user_model.dart';
+import 'package:cyclot_v1/repositories/allocation_repository.dart';
+import 'package:cyclot_v1/repositories/bike_repository.dart';
+import 'package:cyclot_v1/repositories/user_repository.dart';
+import 'package:cyclot_v1/services/allocation_service.dart';
+import 'package:cyclot_v1/services/auth_service.dart';
 
 class EmployeeAvailableBikesScreen extends StatefulWidget {
   const EmployeeAvailableBikesScreen({super.key});
@@ -14,39 +22,45 @@ class EmployeeAvailableBikesScreen extends StatefulWidget {
 
 class _EmployeeAvailableBikesScreenState
     extends State<EmployeeAvailableBikesScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final User _auth = FirebaseAuth.instance.currentUser!;
+  final AuthService _authService = AuthService();
+  final UserRepository _userRepository = UserRepository();
+  final BikeRepository _bikeRepository = BikeRepository();
+  final AllocationRepository _allocationRepository = AllocationRepository();
+  final AllocationService _allocationService = AllocationService();
   final Map<String, bool> _requestingBikes = {};
-  late Future<AppUser> user;
-  late Stream<QuerySnapshot> _activeAllocationStream;
+  late Future<AppUser?> user;
+  late Stream<List<Bike>> _availableBikesStream;
+  late String _employeeId;
+  String _employeeName = '';
 
   @override
   void initState() {
     super.initState();
-    user = FirebaseFirestore.instance
-        .collection('users')
-        .doc(_auth.uid)
-        .get()
-        .then((doc) => AppUser.fromFirestore(doc));
+    _employeeId = _authService.currentUserId!;
 
-    _activeAllocationStream = _firestore
-        .collection('allocations')
-        .where('employeeId', isEqualTo: _auth.uid)
-        .where('returned', isEqualTo: false)
-        .snapshots();
+    user = _userRepository.getUser(_employeeId);
+    user.then((appUser) {
+      if (appUser != null) {
+        setState(() => _employeeName = appUser.name);
+      }
+    });
+
+    _availableBikesStream = _bikeRepository.getBikesStream().map((snapshot) {
+      return snapshot
+          .where((bike) => bike.isAllocated == false && bike.isDamaged == false)
+          .toList();
+    });
   }
 
-  Future<void> _requestBike(String docId, String bikeId) async {
-    setState(() => _requestingBikes[docId] = true);
+  Future<void> _requestBike(String bikeId) async {
+    setState(() => _requestingBikes[bikeId] = true);
 
     try {
-      final existingAllocation = await _firestore
-          .collection('allocations')
-          .where('employeeId', isEqualTo: _auth.uid)
-          .where('returned', isEqualTo: false)
-          .get();
+      // Check if employee already has an active allocation
+      final existingAllocation = await _allocationRepository
+          .getActiveAllocationForEmployee(_employeeId);
 
-      if (existingAllocation.docs.isNotEmpty) {
+      if (existingAllocation != null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -57,49 +71,37 @@ class _EmployeeAvailableBikesScreenState
             ),
           );
         }
+        setState(() => _requestingBikes[bikeId] = false);
         return;
       }
 
-      await _firestore.collection('allocations').add({
-        'bikeId': bikeId,
-        'bikeDocId': docId,
-        'employeeId': _auth.uid,
-        'status': 'active',
-        'returned': false,
-        'requestedAt': DateTime.now(),
-        'employeeName': (await user).name,
-      });
-
-      await _firestore.collection('bikes').doc(docId).update({
-        'isAllocated': true,
-      });
+      // Use AllocationService to allocate bike (handles batch operation)
+      await _allocationService.allocateBike(
+        employeeId: _employeeId,
+        employeeName: _employeeName,
+        bikeId: bikeId,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Bike requested successfully!'),
+            content: Text('Bike allocated successfully!'),
             duration: Duration(seconds: 2),
           ),
         );
       }
-    } on FirebaseException catch (e) {
-      if (mounted) {
-        String errorMessage = 'Error requesting bike';
-        if (e.code == 'permission-denied') {
-          errorMessage = 'Permission denied. Contact administrator.';
-        }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
-      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Unexpected error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error allocating bike: ${ErrorHelper.cleanError(e)}',
+            ),
+          ),
+        );
       }
     } finally {
-      setState(() => _requestingBikes[docId] = false);
+      setState(() => _requestingBikes[bikeId] = false);
     }
   }
 
@@ -117,18 +119,15 @@ class _EmployeeAvailableBikesScreenState
         elevation: 0,
         leading: BackButton(color: Colors.white),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _activeAllocationStream,
-        builder: (context, allocationSnapshot) {
-          final hasActiveAllocation =
-              allocationSnapshot.data?.docs.isNotEmpty ?? false;
+      body: FutureBuilder<dynamic>(
+        future: _allocationRepository.getActiveAllocationForEmployee(
+          _employeeId,
+        ),
+        builder: (context, activeAllocSnapshot) {
+          final hasActiveAllocation = activeAllocSnapshot.data != null;
 
-          return StreamBuilder<QuerySnapshot>(
-            stream: _firestore
-                .collection('bikes')
-                .where('isAllocated', isEqualTo: false)
-                .where('isDamaged', isEqualTo: false)
-                .snapshots(),
+          return StreamBuilder<List<Bike>>(
+            stream: _availableBikesStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -138,7 +137,7 @@ class _EmployeeAvailableBikesScreenState
                 return Center(child: Text('Error: ${snapshot.error}'));
               }
 
-              final bikes = snapshot.data?.docs ?? [];
+              final bikes = snapshot.data ?? [];
 
               if (bikes.isEmpty) {
                 return const Center(
@@ -168,9 +167,8 @@ class _EmployeeAvailableBikesScreenState
                       itemCount: bikes.length,
                       itemBuilder: (context, index) {
                         final bike = bikes[index];
-                        final docId = bike.id;
-                        final bikeId = bike['bikeId'] as String;
-                        final isRequesting = _requestingBikes[docId] ?? false;
+                        final bikeId = bike.bikeId;
+                        final isRequesting = _requestingBikes[bikeId] ?? false;
 
                         return Card(
                           color: context.cardTheme.color,
@@ -199,14 +197,14 @@ class _EmployeeAvailableBikesScreenState
                                           ),
                                           const SizedBox(height: 10),
                                           Text(
-                                            'Color: ${bike['color'] ?? 'Unknown'}',
+                                            'Created: ${bike.createdAt.toString().split('.')[0]}',
                                             style: Theme.of(
                                               context,
                                             ).textTheme.bodyMedium,
                                           ),
                                           const SizedBox(height: 10),
                                           Text(
-                                            'Status: ${bike['isDamaged'] ? 'Damaged' : 'Available'}',
+                                            'Status: ${bike.isDamaged ? 'Damaged' : 'Available'}',
                                             style: Theme.of(
                                               context,
                                             ).textTheme.bodyMedium,
@@ -223,7 +221,7 @@ class _EmployeeAvailableBikesScreenState
                                     onPressed:
                                         (isRequesting || hasActiveAllocation)
                                         ? null
-                                        : () => _requestBike(docId, bikeId),
+                                        : () => _requestBike(bikeId),
                                     child: isRequesting
                                         ? const SizedBox(
                                             height: 20,

@@ -1,5 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+import 'package:cyclot_v1/core/helpers/error_helper.dart';
+import 'package:cyclot_v1/widgets/message_card.dart';
+import 'package:cyclot_v1/services/bike_service.dart';
 
 class SecurityAddBikesScreen extends StatefulWidget {
   const SecurityAddBikesScreen({super.key});
@@ -11,6 +15,7 @@ class SecurityAddBikesScreen extends StatefulWidget {
 class _SecurityAddBikesScreenState extends State<SecurityAddBikesScreen> {
   final _formKey = GlobalKey<FormState>();
   final _numberOfBikesController = TextEditingController();
+  final BikeService _bikeService = BikeService();
 
   bool _isLoading = false;
   String? _successMessage;
@@ -52,48 +57,20 @@ class _SecurityAddBikesScreenState extends State<SecurityAddBikesScreen> {
     });
 
     try {
-      await _bulkAddBikesToFirestore(numberOfBikes);
+      await _bikeService.bulkAddBikesToFirestore(numberOfBikes);
       setState(() {
         _successMessage = 'Successfully added $numberOfBikes bikes!';
         _numberOfBikesController.clear();
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error adding bikes: ${e.toString()}';
+        _errorMessage = 'Error adding bikes: ${ErrorHelper.cleanError(e)}';
       });
     } finally {
       setState(() {
         _isLoading = false;
       });
     }
-  }
-
-  Future<void> _bulkAddBikesToFirestore(int numberOfBikes) async {
-    final bikesCollection = FirebaseFirestore.instance.collection('bikes');
-
-    final snapshot = await bikesCollection.count().get();
-    final currentCount = snapshot.count;
-    final startingId = currentCount! + 1;
-
-    final batch = FirebaseFirestore.instance.batch();
-    final bikeColors = ['Red', 'Blue', 'Green', 'Yellow'];
-    for (int i = 0; i < numberOfBikes; i++) {
-      final bikeId = 'BIKE_${(startingId + i).toString().padLeft(3, '0')}';
-
-      final docRef = bikesCollection.doc();
-
-      final bikeData = {
-        'bikeId': bikeId,
-        'color': bikeColors[i % bikeColors.length],
-        'isAllocated': false,
-        'isDamaged': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      };
-
-      batch.set(docRef, bikeData);
-    }
-
-    await batch.commit();
   }
 
   @override
@@ -171,13 +148,13 @@ class _SecurityAddBikesScreenState extends State<SecurityAddBikesScreen> {
                 ),
                 const SizedBox(height: 24),
                 if (_successMessage != null)
-                  _buildMessageCard(
+                  MessageCard(
                     message: _successMessage!,
                     color: Colors.green,
                     icon: Icons.check_circle,
                   ),
                 if (_errorMessage != null)
-                  _buildMessageCard(
+                  MessageCard(
                     message: _errorMessage!,
                     color: Colors.red,
                     icon: Icons.error,
@@ -185,38 +162,6 @@ class _SecurityAddBikesScreenState extends State<SecurityAddBikesScreen> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMessageCard({
-    required String message,
-    required Color color,
-    required IconData icon,
-  }) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: color),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );

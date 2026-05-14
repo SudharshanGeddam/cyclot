@@ -1,7 +1,14 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cyclot_v1/screens/role_router_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Project imports:
+import 'package:cyclot_v1/core/helpers/validation_helpers.dart';
+import 'package:cyclot_v1/core/helpers/error_helper.dart';
+import 'package:cyclot_v1/screens/role_router_screen.dart';
+import 'package:cyclot_v1/services/auth_service.dart';
+import 'package:cyclot_v1/widgets/auth_form_fields.dart';
+import 'package:cyclot_v1/widgets/error_banner.dart';
+import 'package:cyclot_v1/widgets/loading_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _authService = AuthService();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -23,32 +31,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<String> _loginUser() async {
-    final userCredential = await FirebaseAuth.instance
-        .signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
-
-    final uid = userCredential.user!.uid;
-
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
-
-    if (!doc.exists) {
-      throw Exception('User profile not found in Firestore');
-    }
-
-    final role = doc.data()?['role'] as String?;
-    if (role == null) {
-      throw Exception('Role field missing in user profile');
-    }
-
-    return uid;
   }
 
   void _handleLogin() async {
@@ -62,40 +44,22 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final uid = await _loginUser();
+      final uid = await _authService.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => RoleRouterScreen(uid: uid)),
         );
       }
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        _errorMessage = _getAuthErrorMessage(e.code);
-        _isLoading = false;
-      });
-    } on FirebaseException catch (e) {
-      setState(() {
-        _errorMessage = 'Firestore Error: ${e.message}';
-        _isLoading = false;
-      });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Unexpected error: $e';
+        _errorMessage = ErrorHelper.cleanError(e);
         _isLoading = false;
       });
     }
-  }
-
-  String _getAuthErrorMessage(String code) {
-    return switch (code) {
-      'user-not-found' => 'No account found with this email',
-      'wrong-password' => 'Incorrect password',
-      'invalid-email' => 'Invalid email address',
-      'user-disabled' => 'This account has been disabled',
-      'too-many-requests' => 'Too many login attempts. Please try again later',
-      _ => 'Login failed: $code',
-    };
   }
 
   @override
@@ -132,55 +96,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 48),
                       if (_errorMessage != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade100,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.red.shade300),
-                            ),
-                            child: Text(
-                              _errorMessage!,
-                              style: TextStyle(color: Colors.red.shade700),
-                            ),
-                          ),
+                        ErrorBanner(
+                          message: _errorMessage ?? '',
+                          isError: true,
                         ),
-                      TextFormField(
+                      if (_errorMessage != null) const SizedBox(height: 16),
+                      EmailField(
                         controller: _emailController,
-                        decoration: InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'john@example.com',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          prefixIcon: const Icon(Icons.email),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
                         enabled: !_isLoading,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
-                          }
-                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                            return 'Please enter a valid email';
-                          }
-                          return null;
-                        },
+                        validator: (value) =>
+                            ValidationHelpers.validateEmail(value),
                       ),
                       const SizedBox(height: 16),
-                      TextFormField(
+                      PasswordField(
                         controller: _passwordController,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          hintText: 'Enter your password',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          prefixIcon: const Icon(Icons.lock),
-                        ),
-                        obscureText: true,
                         enabled: !_isLoading,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -190,29 +119,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
                       const SizedBox(height: 24),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: _isLoading ? null : () {},
-                          child: const Text('Forgot Password?'),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
+                      LoadingButton(
+                        label: 'Login',
+                        onPressed: _handleLogin,
+                        isLoading: _isLoading,
                         width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _handleLogin,
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text('Login'),
-                        ),
                       ),
                       const SizedBox(height: 24),
                       Row(
