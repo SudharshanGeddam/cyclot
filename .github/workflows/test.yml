@@ -1,0 +1,195 @@
+name: CI - Flutter Analysis, Tests & Formatting
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  analyze:
+    name: Flutter Analyze
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.11.0'
+          channel: 'stable'
+          
+      - name: Get dependencies
+        run: flutter pub get
+        
+      - name: Run Flutter Analyze
+        run: flutter analyze
+        
+  format:
+    name: Code Formatting Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.11.0'
+          channel: 'stable'
+          
+      - name: Get dependencies
+        run: flutter pub get
+        
+      - name: Check dart formatting
+        run: dart format --set-exit-if-changed .
+        
+      - name: Report formatting issues
+        if: failure()
+        run: |
+          echo "::error::Code formatting issues found. Run 'dart format .' to fix."
+          exit 1
+
+  test:
+    name: Unit & Widget Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.11.0'
+          channel: 'stable'
+          
+      - name: Get dependencies
+        run: flutter pub get
+        
+      - name: Run unit and widget tests
+        run: flutter test --coverage --no-pub
+        
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          
+      - name: Generate coverage summary
+        if: always()
+        run: |
+          echo "## Test Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f coverage/lcov.info ]; then
+            echo "Coverage data generated successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No coverage data available" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Security and dependency checks
+  pub_score:
+    name: Pub Score Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.11.0'
+          channel: 'stable'
+          
+      - name: Get dependencies
+        run: flutter pub get
+        
+      - name: Check for outdated packages
+        run: flutter pub outdated --exit-on-flutter-root-check-failure || true
+        
+      - name: Check for deprecated packages
+        run: |
+          flutter pub deps || echo "Dependency check completed"
+
+  # Build APK to verify compilation
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.11.0'
+          channel: 'stable'
+          
+      - name: Get dependencies
+        run: flutter pub get
+        
+      - name: Build APK
+        run: flutter build apk --release --no-pub
+        
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cyclot-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  # Summary job that runs after all other jobs
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [ analyze, format, test ]
+    if: always()
+    
+    steps:
+      - name: Check job statuses
+        run: |
+          if [ "${{ needs.analyze.result }}" != "success" ]; then
+            echo "❌ Flutter Analyze failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.format.result }}" != "success" ]; then
+            echo "❌ Code formatting check failed"
+            exit 1
+          fi
+          
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "❌ Tests failed"
+            exit 1
+          fi
+          
+          echo "✅ All CI checks passed!"
+          
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const analyzeStatus = '${{ needs.analyze.result }}' === 'success' ? '✅' : '❌';
+            const formatStatus = '${{ needs.format.result }}' === 'success' ? '✅' : '❌';
+            const testStatus = '${{ needs.test.result }}' === 'success' ? '✅' : '❌';
+            
+            const comment = `## CI Results
+            
+${analyzeStatus} Flutter Analyze
+${formatStatus} Code Formatting
+${testStatus} Unit & Widget Tests`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
