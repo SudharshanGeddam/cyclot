@@ -2,10 +2,17 @@
 
 A Flutter-based bike management application designed for organizations to manage bike allocations, returns, and inventory tracking. The app uses Firebase for authentication and data storage.
 
+## Screenshots
+
+<div style="display: flex; gap: 10px;">
+  <img src="docs/assets/employee_dashboard.png" alt="Employee Dashboard" width="300" />
+  <img src="docs/assets/admin_dashboard.png" alt="Admin Dashboard" width="300" />
+</div>
+
 ## Features
 
 ### Authentication
-- User registration with role selection (Employee, Security, Admin)
+- User registration (creates Employee users by default)
 - Email/password login with Firebase Authentication
 - Role-based navigation and access control
 
@@ -38,77 +45,64 @@ A Flutter-based bike management application designed for organizations to manage
 
 ## Project Structure
 
-```
+```text
 lib/
 ├── main.dart                 # App entry point & auth check
 ├── firebase_options.dart     # Firebase configuration
-├── core/
-│   ├── extensions/           # Context extensions
-│   └── theme/                # App theme configuration
-├── models/
-│   └── user_model.dart       # User data model
-└── screens/
-    ├── login_screen.dart
-    ├── register_screen.dart
-    ├── role_router_screen.dart
-    ├── employee_home_screen.dart
-    ├── employee_available_bikes_screen.dart
-    ├── employee_return_bike_screen.dart
-    ├── employee_notifications_screen.dart
-    ├── security_home_screen.dart
-    ├── security_add_bikes_screen.dart
-    ├── security_returned_bikes_screen.dart
-    └── admin_dashboard_screen.dart
+├── core/                     # Core utilities, network, and theme
+├── models/                   # Data models
+├── repositories/             # Data access layer
+├── screens/                  # UI screens
+├── services/                 # Business logic and external services
+└── widgets/                  # Reusable UI components
 ```
 
-## Firestore Collections
+## Architecture
 
-- **users** - User profiles with role information
-- **bikes** - Bike inventory with status (isAllocated, isDamaged)
-- **allocations** - Bike allocation records
-- **notifications** - Employee notifications for bike review status
+The project follows a clean, layered architecture designed to separate concerns and ensure maintainability:
+
+1. **Presentation Layer (`screens/`, `widgets/`)**: Flutter UI components handling user interaction and visual state. Dependencies are optionally injected to support unit and widget testing.
+2. **Business Logic Layer (`services/`)**: Core application workflows (e.g., `AllocationService`, `AuthService`). These services orchestrate complex transactions to ensure data consistency, particularly for high-concurrency actions like bike allocations.
+3. **Data Access Layer (`repositories/`)**: Classes responsible for abstracting the Firestore database queries, retrieving collections, and transforming snapshots into typed models.
+4. **Data Models (`models/`)**: Strongly typed data classes with serialization logic (`fromFirestore`, `toFirestore`) ensuring robust typing across the app.
+
+### Architecture Decisions
+- **Fake vs Mock Data Layers**: We specifically utilize `fake_cloud_firestore` rather than manual sealed-class mocks to accurately simulate complex database scenarios, including `runTransaction` race-condition preventions.
+- **Dependency Injection**: We use constructor dependency injection at the UI layer (Screens). This decouples views from their concrete implementations, massively improving testability and scalability.
+- **Service Segregation**: Complex business workflows (like atomic allocations) are housed strictly within `services/` rather than UI widgets, ensuring strict adherence to the Single Responsibility Principle.
+
+## Firestore Schema
+
+The detailed collection and document structures are documented in [docs/firestore-schema.md](docs/firestore-schema.md).
+
+## Requirements
+
+- **Flutter**: 3.11.0 or higher
+- **Dart**: 3.11.0 or higher
+- **Firebase Project**: Active project with Email/Password authentication enabled
+- **Firestore**: Database created with appropriate indexes and security rules
 
 ## Getting Started
 
 1. Clone the repository
-2. Run `flutter pub get` to install dependencies
-3. Configure Firebase:
-   - Create a Firebase project
-   - Enable Authentication (Email/Password)
-   - Create Firestore database
-   - Run `flutterfire configure`
-4. Run the app: `flutter run`
+2. Ensure Flutter 3.12.0+ is installed: `flutter --version`
+3. Run `flutter pub get` to install dependencies
+4. Configure Firebase:
+   - Create a Firebase project at https://console.firebase.google.com
+   - Enable Authentication (Email/Password method)
+   - Create a Firestore database
+   - Run `flutterfire configure` and select your Firebase project
+5. Apply Firestore security rules and create required indexes (see [docs/security-rules.md](docs/security-rules.md) for details)
+6. Run the app: `flutter run`
 
-## Not Yet Implemented
+## Known Limitations & Future Enhancements
 
-### Features
-- [ ] Bike search and filtering functionality
-- [ ] Bike details screen with full information
-- [ ] Edit/delete bike functionality for security
-- [ ] User profile management and password change
-- [ ] Admin user management (view/edit/delete users)
-- [ ] Allocation history for employees
-- [ ] Export reports functionality for admin
-
-### Technical Improvements
-- [ ] Offline support with local caching
-- [ ] Image upload for bike photos
-- [ ] QR code scanning for bike identification
-- [ ] Unit and widget tests
-- [ ] CI/CD pipeline setup
-- [ ] Firestore security rules optimization
-- [ ] Pagination for large datasets (partially implemented)
-- [ ] Error boundary and crash reporting
-- [ ] Analytics integration
-
-### UI/UX Enhancements
-- [ ] Onboarding screens for new users
-- [ ] Skeleton loading states
-- [ ] Pull-to-refresh on all list screens
-- [ ] Empty state illustrations
-- [ ] Success/error animations
-- [ ] Responsive layout for tablets/web
+While Cyclot provides robust core workflows, there are several limitations planned for future enhancement:
+- **Search and Pagination**: High-volume queries currently load entirely. Pagination, sorting, and robust search capabilities for bikes and history logs are slated for upcoming releases.
+- **Offline Support**: The app heavily relies on an active internet connection to communicate with Firestore. Caching and offline persistence mechanisms are currently limited.
+- **Admin Management**: User role management (promoting an employee to security or admin) must currently be performed directly in the Firebase Console. In-app user management for admins is a planned enhancement.
+- **Advanced Identity Verification**: QR code scanning for faster bike checkout and physical identity verification is not yet implemented.
 
 ## License
 
-This project is private and proprietary.
+This project is licensed under the MIT License - see the LICENSE file for details.
