@@ -5,8 +5,10 @@ A Flutter-based bike management application designed for organizations to manage
 ## Screenshots
 
 <div style="display: flex; gap: 10px;">
-  <img src="docs/assets/employee_dashboard.png" alt="Employee Dashboard" width="300" />
-  <img src="docs/assets/admin_dashboard.png" alt="Admin Dashboard" width="300" />
+  <img src="docs/assets/admin_dashboard.png" alt="Employee Dashboard" width="300" />
+  <img src="docs/assets/security_interface.png" alt="Admin Dashboard" width="300" />
+  <img src="docs/assets/employee_home.png" alt="Security Dashboard" width="300" />
+  <img src="docs/assets/employee_bike_request.png" alt="Employee Dashboard" width="300" /> 
 </div>
 
 ## Features
